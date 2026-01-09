@@ -1,18 +1,56 @@
 <!DOCTYPE html>
 <html>
-<head><title>PPT Table Converter</title></head>
+<head>
+  <title>PPT Table Converter</title>
+</head>
 <body>
+
 <h2>PPTX → HTML Table Converter</h2>
-<input type="file" id="pptFile">
+
+<input type="file" id="pptFile" accept=".pptx">
 <button onclick="go()">Convert</button>
-<div id="out"></div>
+
+<div id="out" style="margin-top:20px;"></div>
+
 <script>
-function go(){
- const f=document.getElementById("pptFile").files[0];
- const fd=new FormData(); fd.append("pptFile",f);
- fetch("https://ppt-table-converter.onrender.com/convert",{method:"POST",body:fd})
- .then(r=>r.json()).then(d=>out.innerHTML=d.html||d.error);
+function go() {
+  const fileInput = document.getElementById("pptFile");
+  const output = document.getElementById("out");
+  const file = fileInput.files[0];
+
+  if (!file) {
+    alert("Please select a PPTX file");
+    return;
+  }
+
+  output.innerHTML = "Processing...";
+
+  const fd = new FormData();
+  fd.append("pptFile", file);
+
+  fetch("https://ppt-table-converter.onrender.com/convert", {
+    method: "POST",
+    body: fd
+  })
+  .then(res => {
+    if (!res.ok) {
+      throw new Error("Server error: " + res.status);
+    }
+    return res.json();
+  })
+  .then(data => {
+    if (data.html) {
+      output.innerHTML = data.html;
+    } else {
+      output.innerHTML = data.error || "No output returned";
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    output.innerHTML = "Error connecting to backend.";
+  });
 }
 </script>
+
 </body>
 </html>
