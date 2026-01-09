@@ -2,28 +2,65 @@
 <html>
 <head>
   <title>PPT Table Converter</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 30px;
+    }
+    .container {
+      max-width: 1000px;
+      margin: auto;
+    }
+    .preview {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #ccc;
+      max-height: 500px;
+      overflow: auto;
+      background: #fafafa;
+    }
+    #downloadBtn {
+      margin-top: 15px;
+      padding: 10px 16px;
+      background: #0d6efd;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      display: none;
+    }
+  </style>
 </head>
+
 <body>
+<div class="container">
+  <h2>PPTX → HTML Table Converter</h2>
 
-<h2>PPTX → HTML Table Converter</h2>
+  <input type="file" id="pptFile" accept=".pptx">
+  <button onclick="go()">Convert</button>
 
-<input type="file" id="pptFile" accept=".pptx">
-<button onclick="go()">Convert</button>
+  <div id="status" style="margin-top:10px;"></div>
+  <div id="preview" class="preview"></div>
 
-<div id="out" style="margin-top:20px;"></div>
+  <button id="downloadBtn">Download HTML</button>
+</div>
 
 <script>
+let latestHTML = "";
+
 function go() {
-  const fileInput = document.getElementById("pptFile");
-  const output = document.getElementById("out");
-  const file = fileInput.files[0];
+  const file = document.getElementById("pptFile").files[0];
+  const status = document.getElementById("status");
+  const preview = document.getElementById("preview");
+  const downloadBtn = document.getElementById("downloadBtn");
 
   if (!file) {
     alert("Please select a PPTX file");
     return;
   }
 
-  output.innerHTML = "Processing...";
+  status.innerText = "Processing… (first run may take 1–2 minutes)";
+  preview.innerHTML = "";
+  downloadBtn.style.display = "none";
 
   const fd = new FormData();
   fd.append("pptFile", file);
@@ -32,25 +69,32 @@ function go() {
     method: "POST",
     body: fd
   })
-  .then(res => {
-    if (!res.ok) {
-      throw new Error("Server error: " + res.status);
-    }
-    return res.json();
-  })
+  .then(res => res.json())
   .then(data => {
     if (data.html) {
-      output.innerHTML = data.html;
+      latestHTML = data.html;
+      preview.innerHTML = data.html;
+      status.innerText = "Completed";
+      downloadBtn.style.display = "inline-block";
     } else {
-      output.innerHTML = data.error || "No output returned";
+      status.innerText = data.error || "No tables found.";
     }
   })
   .catch(err => {
     console.error(err);
-    output.innerHTML = "Error connecting to backend.";
+    status.innerText = "Server error. Please retry.";
   });
 }
-</script>
 
+document.getElementById("downloadBtn").onclick = function () {
+  const blob = new Blob([latestHTML], { type: "text/html;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "output.html";
+  a.click();
+  URL.revokeObjectURL(url);
+};
+</script>
 </body>
 </html>
