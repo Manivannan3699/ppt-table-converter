@@ -10,7 +10,7 @@
 function go(){
  const f=document.getElementById("pptFile").files[0];
  const fd=new FormData(); fd.append("pptFile",f);
- fetch("RENDER_API_URL/convert",{method:"POST",body:fd})
+ fetch("https://ppt-table-converter.onrender.com/convert",{method:"POST",body:fd})
  .then(r=>r.json()).then(d=>out.innerHTML=d.html||d.error);
 }
 </script>
