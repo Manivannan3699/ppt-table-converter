@@ -135,7 +135,9 @@ def font_size_class(pt):
 # RUN / PARAGRAPH / CELL TO HTML
 # ------------------------------------------------------------------
 def run_to_html(run, theme):
+
     text = html.escape(run.text or "")
+
     if not text:
         return ""
 
@@ -143,38 +145,59 @@ def run_to_html(run, theme):
 
     try:
         fc = run.font.color
+
         if fc:
             if fc.rgb:
-                classes += text_color_class(rgb_to_hex(fc.rgb))
+                color = rgb_to_hex(fc.rgb)
+
+                if color and color.upper() != "#000000":
+                    classes += text_color_class(color)
+
             elif fc.theme_color:
                 key = str(fc.theme_color).split(".")[-1].upper()
-                classes += text_color_class(theme.get(key))
-    except:
+
+                color = theme.get(key)
+
+                if color and color.upper() != "#000000":
+                    classes += text_color_class(color)
+
+    except Exception:
         pass
 
     try:
-        classes += font_family_class(run.font.name)
-    except:
+        if run.font.name:
+            classes += font_family_class(run.font.name)
+    except Exception:
         pass
 
     try:
         if run.font.size:
-            classes += font_size_class(run.font.size.pt)
-    except:
+            pt = int(run.font.size.pt)
+
+            if pt not in (10, 11, 12):
+                classes += font_size_class(pt)
+
+    except Exception:
         pass
 
-    span = text
+    output = text
+
     if classes:
-        span = f'<span class="{" ".join(dict.fromkeys(classes))}">{text}</span>'
+        output = (
+            f'<span class="{" ".join(dict.fromkeys(classes))}">'
+            f'{output}</span>'
+        )
 
     if run.font.bold:
-        span = f"<b>{span}</b>"
-    if run.font.italic:
-        span = f"<i>{span}</i>"
-    if run.font.underline:
-        span = f"<u>{span}</u>"
+        output = f"<b>{output}</b>"
 
-    return span
+    if run.font.italic:
+        output = f"<i>{output}</i>"
+
+    if run.font.underline:
+        output = f"<u>{output}</u>"
+
+    return output
 
 
 def para_to_html(p, theme):
@@ -197,8 +220,15 @@ def para_to_html(p, theme):
 
 
 def cell_content(cell, theme):
-    items = [para_to_html(p, theme) for p in cell.text_frame.paragraphs]
-    items = [i for i in items if i]
+
+    items = []
+
+    for p in cell.text_frame.paragraphs:
+
+        html_block = para_to_html(p, theme)
+
+        if html_block and html_block.strip():
+            items.append(html_block)
 
     if not items:
         return ""
@@ -245,7 +275,15 @@ def cell_classes(cell, theme):
         classes.append("align-left")
         add_css(".align-left", "text-align:left;")
 
-    add_css(".ppt-cell", "border:1px solid #999;padding:6px;vertical-align:middle;")
+    add_css(
+    ".ppt-cell",
+    """
+    border:1px solid rgba(0,0,0,.15);
+    padding:6px 10px;
+    vertical-align:top;
+    line-height:1.4;
+    """
+    )
 
     return " ".join(dict.fromkeys(classes))
 
@@ -270,13 +308,22 @@ def process_table(table, theme):
             colspan = getattr(cell, "span_width", 1)
             rowspan = getattr(cell, "span_height", 1)
 
+            tag = "th" if r == 0 else "td"
+
             cols.append(
-                f'<td colspan="{colspan}" rowspan="{rowspan}" class="{classes}">{content}</td>'
+                f'<{tag} colspan="{colspan}" rowspan="{rowspan}" class="{classes}">{content}</{tag}>'
             )
 
         rows.append("<tr>" + "".join(cols) + "</tr>")
 
-    add_css(".ppt-table", "border-collapse:collapse;width:100%;font-size:14px;")
+    add_css(
+    ".ppt-table",
+    """
+    border-collapse:collapse;
+    width:auto;
+    font-size:14px;
+    """
+    )
     add_css(".ppt-table ul", "margin:0 0 0 18px;padding:0;")
 
     return "\n".join(rows)
@@ -299,6 +346,12 @@ def pptx_to_html(path):
                 blocks.append(f"<table class='ppt-table'>{body}</table>")
 
     css = "<style>\n" + "\n".join(GENERATED_CSS) + "\n</style>\n"
+    add_css(
+    ".ppt-table th",
+    """
+    font-weight:600;
+    """
+    )
     return css + "<br/>".join(blocks)
 
 
